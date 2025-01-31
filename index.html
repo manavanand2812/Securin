@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CVE Data Display</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+        }
+
+        header {
+            background-color: #333;
+            color: white;
+            padding: 10px;
+            text-align: center;
+        }
+
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        td {
+            background-color: #f9f9f9;
+        }
+
+        .search {
+            padding: 8px;
+            margin-top: 20px;
+        }
+
+        .search label {
+            font-size: 16px;
+            margin-right: 10px;
+        }
+
+        .search input {
+            padding: 6px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>CVE Data Display</h1>
+</header>
+
+<div class="search">
+    <label for="search-input">Search CVE ID:</label>
+    <input type="text" id="search-input" placeholder="Enter CVE ID" onkeyup="filterTable()">
+</div>
+
+<table id="cve-table">
+    <thead>
+        <tr>
+            <th>CVE ID</th>
+            <th>Description</th>
+            <th>Severity</th>
+            <th>Last Modified</th>
+            <th>Published Date</th>
+        </tr>
+    </thead>
+    <tbody>
+        <!-- Data will be populated here by JavaScript -->
+    </tbody>
+</table>
+
+<script>
+    // Function to fetch CVE data from API and display it in the table
+    async function fetchCVEData() {
+        try {
+            const response = await fetch("http://127.0.0.1:5000/cve/year/1988");  // Modify to fetch the required data from API
+            const data = await response.json();
+            populateTable(data);
+        } catch (error) {
+            console.error("Error fetching CVE data:", error);
+        }
+    }
+
+    // Function to populate the table with CVE data
+    function populateTable(data) {
+        const tableBody = document.getElementById("cve-table").getElementsByTagName("tbody")[0];
+        tableBody.innerHTML = "";  // Clear existing rows
+
+        data.forEach(item => {
+            const row = document.createElement("tr");
+
+            const cveIDCell = document.createElement("td");
+            cveIDCell.textContent = item.cveID;
+            row.appendChild(cveIDCell);
+
+            const descriptionCell = document.createElement("td");
+            descriptionCell.textContent = item.description || "No Description";
+            row.appendChild(descriptionCell);
+
+            const severityCell = document.createElement("td");
+            severityCell.textContent = item.severity || "Unknown";
+            row.appendChild(severityCell);
+
+            const lastModifiedCell = document.createElement("td");
+            lastModifiedCell.textContent = item.lastModified;
+            row.appendChild(lastModifiedCell);
+
+            const publishedDateCell = document.createElement("td");
+            publishedDateCell.textContent = item.publishedDate;
+            row.appendChild(publishedDateCell);
+
+            tableBody.appendChild(row);
+        });
+    }
+
+    // Function to filter the table based on user input
+    function filterTable() {
+        const searchInput = document.getElementById("search-input").value.toLowerCase();
+        const rows = document.querySelectorAll("#cve-table tbody tr");
+
+        rows.forEach(row => {
+            const cveID = row.cells[0].textContent.toLowerCase();
+            if (cveID.includes(searchInput)) {
+                row.style.display = "";
+            } else {
+                row.style.display = "none";
+            }
+        });
+    }
+
+    // Initialize the table with data when the page loads
+    window.onload = fetchCVEData;
+</script>
+
+</body>
+</html>
