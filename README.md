@@ -1,3 +1,8 @@
 # Securin
 
-The code does not work completely. I was able call the cve details from the file but was not able to make it dynamic. The cve year needs to be changed from the code itself.
+Overview
+
+This project is a Flask-based web application that interacts with a MongoDB database to store and retrieve CVE (Common Vulnerabilities and Exposures) data. It provides pagination and search functionality for retrieving CVE details.
+
+Screen shots
+
