@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CVE Data Display</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+        }
+
+        header {
+            background-color: #333;
+            color: white;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .search {
+            padding: 8px;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .search label {
+            font-size: 16px;
+            margin-right: 10px;
+        }
+
+        .search input {
+            padding: 6px;
+            font-size: 14px;
+        }
+
+        .search button {
+            padding: 7px 12px;
+            font-size: 14px;
+            margin-left: 10px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+
+        .search button:hover {
+            background-color: #45a049;
+        }
+
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        td {
+            background-color: #f9f9f9;
+        }
+
+        .pagination {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .pagination button {
+            padding: 6px 12px;
+            margin: 0 5px;
+            font-size: 14px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+
+        .pagination button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>CVE Data Display</h1>
+</header>
+
+<div class="search">
+    <label for="search-input">Enter CVE ID:</label>
+    <input type="text" id="search-input" placeholder="e.g., CVE-2023-12345">
+    <button onclick="searchCVE()">Search</button>
+</div>
+
+<table id="cve-table">
+    <thead>
+        <tr>
+            <th>CVE ID</th>
+            <th>Description</th>
+            <th>Severity</th>
+            <th>Last Modified</th>
+            <th>Published Date</th>
+        </tr>
+    </thead>
+    <tbody>
+        <!-- Data will be populated here by JavaScript -->
+    </tbody>
+</table>
+
+<div class="pagination" id="pagination">
+    <!-- Pagination buttons will be populated here -->
+</div>
+
+<script>
+    let currentPage = 1;
+
+    // Function to fetch paginated CVE data
+    async function fetchCVEData(page) {
+        try {
+            const response = await fetch(`http://127.0.0.1:5000/cve/page/${page}`);
+            const data = await response.json();
+            populateTable(data);
+            updatePagination(page);
+        } catch (error) {
+            console.error("Error fetching CVE data:", error);
+        }
+    }
+
+    // Function to fetch a specific CVE by ID
+    async function searchCVE() {
+        const cveID = document.getElementById("search-input").value.trim();
+        if (!cveID) {
+            alert("Please enter a CVE ID.");
+            return;
+        }
+
+        try {
+            const response = await fetch(`http://127.0.0.1:5000/cve/search/${cveID}`);
+            const data = await response.json();
+            if (data.message === "CVE not found") {
+                alert("CVE not found.");
+                return;
+            }
+            populateTable([data]); // Display only the found CVE
+            document.getElementById("pagination").innerHTML = ''; // Hide pagination when searching
+        } catch (error) {
+            console.error("Error fetching CVE data:", error);
+            alert("CVE not found.");
+        }
+    }
+
+    // Function to populate the table with CVE data
+    function populateTable(data) {
+        const tableBody = document.getElementById("cve-table").getElementsByTagName("tbody")[0];
+        tableBody.innerHTML = "";  // Clear existing rows
+
+        data.forEach(item => {
+            const row = document.createElement("tr");
+
+            const cveIDCell = document.createElement("td");
+            cveIDCell.textContent = item.cveID;
+            row.appendChild(cveIDCell);
+
+            const descriptionCell = document.createElement("td");
+            descriptionCell.textContent = item.description || "No Description";
+            row.appendChild(descriptionCell);
+
+            const severityCell = document.createElement("td");
+            severityCell.textContent = item.severity || "Unknown";
+            row.appendChild(severityCell);
+
+            const lastModifiedCell = document.createElement("td");
+            lastModifiedCell.textContent = item.lastModified;
+            row.appendChild(lastModifiedCell);
+
+            const publishedDateCell = document.createElement("td");
+            publishedDateCell.textContent = item.publishedDate;
+            row.appendChild(publishedDateCell);
+
+            tableBody.appendChild(row);
+        });
+    }
+
+    // Function to update pagination buttons
+    function updatePagination(page) {
+        const pagination = document.getElementById("pagination");
+        pagination.innerHTML = `
+            <button onclick="changePage(${page - 1})" ${page === 1 ? 'disabled' : ''}>Previous</button>
+            <button onclick="changePage(${page + 1})">Next</button>
+        `;
+    }
+
+    // Function to change the page
+    function changePage(page) {
+        if (page < 1) return;
+        currentPage = page;
+        fetchCVEData(page);
+    }
+
+    // Initialize the table with the first page
+    window.onload = function() {
+        fetchCVEData(currentPage);
+    }
+</script>
+
+</body>
+</html>
