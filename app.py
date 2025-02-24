@@ -1,65 +1,57 @@
 from flask import Flask, jsonify, request
 from flask_pymongo import PyMongo
-import requests
-import time
-from datetime import datetime, timedelta
-from bson.json_util import dumps
 from flask_cors import CORS
+from bson.json_util import dumps
+import requests
 
-# Flask app initialization
 app = Flask(__name__)
 CORS(app)
 
-# MongoDB configuration
+# MongoDB setup
 app.config["MONGO_URI"] = "mongodb://localhost:27017/cve_db"
 mongo = PyMongo(app)
 
-# Fetch CVE Data from API (for initial population of the database)
-API_URL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
-
-# Fetch CVE data
-def fetch_cve_data(offset: int = 0, limit: int = 200):
-    params = {"startIndex": offset, "resultsPerPage": limit}
-    response = requests.get(API_URL, params=params)
-    if response.status_code == 200:
-        data = response.json()
-        cve_items = []
-        for item in data.get("vulnerabilities", []):
-            cve_data = item.get("cve", {})
-            cve_item = {
-                "cveID": cve_data.get("id", ""),
-                "description": cve_data.get("descriptions", [{}])[0].get("value", ""),
-                "severity": cve_data.get("vulnStatus", "Unknown"),
-                "metrics": cve_data.get("metrics", {}),
-                "lastModified": cve_data.get("lastModified", ""),
-                "publishedDate": cve_data.get("published", ""),
-            }
-            cve_items.append(cve_item)
-        return cve_items
-    return []
-
-# Insert CVE Data into MongoDB
-def insert_cve_data(cve_data):
-    for item in cve_data:
-        mongo.db.cves.update_one(
-            {"cveID": item["cveID"]}, {"$set": item}, upsert=True
-        )
-
-# Paginated CVE data retrieval
+# Get paginated CVE data
 @app.route("/cve/page/<int:page>", methods=["GET"])
 def get_cve_page(page):
-    limit = 15  # Show 15 CVEs per page
-    skip = (page - 1) * limit  # Calculate how many records to skip
+    limit = 10  # Show 10 CVEs per page
+    skip = (page - 1) * limit
+    total_cves = mongo.db.cves.count_documents({})
+    
     cves = mongo.db.cves.find().skip(skip).limit(limit)
-    return dumps(cves)
+    return jsonify({
+        "cves": list(cves),
+        "total_pages": (total_cves // limit) + (1 if total_cves % limit > 0 else 0)
+    })
 
-# Search specific CVE by ID
+# Search CVE by ID
 @app.route("/cve/search/<string:cve_id>", methods=["GET"])
 def search_cve_by_id(cve_id):
     cve = mongo.db.cves.find_one({"cveID": cve_id})
     if cve:
-        return dumps(cve)
+        return dumps({"cves": [cve], "total_pages": 1})
     return jsonify({"message": "CVE not found"}), 404
+
+# Filter CVEs by CVSS severity and date
+@app.route("/cve/filter", methods=["GET"])
+def filter_cve():
+    severity = request.args.get("cvss")
+    date = request.args.get("date")
+    query = {}
+
+    if severity:
+        query["severity"] = severity.capitalize()
+
+    if date:
+        query["publishedDate"] = {"$gte": date}
+
+    total_cves = mongo.db.cves.count_documents(query)
+    cves = mongo.db.cves.find(query).limit(10)
+
+    return jsonify({
+        "cves": list(cves),
+        "total_pages": (total_cves // 10) + (1 if total_cves % 10 > 0 else 0)
+    })
 
 if __name__ == "__main__":
     app.run(debug=True)
